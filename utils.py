@@ -6,7 +6,7 @@ from pymongo.errors import ConnectionFailure
 
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "")
+MONGO_URI = os.getenv("MONGO_DB_URI", "")
 
 # Function to get MongoDB client
 def get_mongo_client():
