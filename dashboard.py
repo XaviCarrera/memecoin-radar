@@ -21,8 +21,8 @@ base_url = "http://0.0.0.0:8080"
 
 # Function to fetch data from an endpoint
 @st.cache_data(ttl=3600)
-def fetch_data(endpoint):
-    response = requests.get(f"{base_url}/{endpoint}")
+def fetch_data(endpoint, params=None):
+    response = requests.get(f"{base_url}/{endpoint}", params=params)
     if response.status_code == 200:
         return response.json()
     else:
@@ -33,6 +33,9 @@ def fetch_data(endpoint):
 top_coins_data = fetch_data("top-coins")
 top_gainers_data = fetch_data("top-gainers")
 top_losers_data = fetch_data("top-losers")
+
+# Fetch traded volume data (last 30 days)
+traded_volume_data = fetch_data("traded-volume")
 
 # Extract total market cap and top coins data
 total_market_cap = top_coins_data.get('total_market_cap', 0)
@@ -54,6 +57,13 @@ treemap_df['display_text'] = treemap_df.apply(
     lambda row: f"<b>{row['symbol']}</b><br>Market Cap: ${row['market_cap']:,.2f}{row['price_text']}", axis=1
 )
 
+# Process the traded volume data
+volume_over_time = traded_volume_data.get('volume_over_time', [])
+df_line = pd.DataFrame(volume_over_time)
+df_line['date'] = pd.to_datetime(df_line['date'])
+df_line['total_volume'] = pd.to_numeric(df_line['total_volume'], errors='coerce')
+df_line = df_line.sort_values('date')
+
 # Sidebar filters
 with st.sidebar:
     st.header("Filters")
@@ -70,15 +80,16 @@ with col1:
     st.markdown("<h3 style='text-align: center;'>Total Market Cap</h3>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; font-size: 24px;'>${total_market_cap:,.2f}</p>", unsafe_allow_html=True)
 with col2:
+    total_traded_volume = df_line['total_volume'].iloc[-1]  # Latest total volume
     st.markdown("<h3 style='text-align: center;'>Total Traded Volume (24 hrs)</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 24px;'>$300,000,000</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 24px;'>${total_traded_volume:,.2f}</p>", unsafe_allow_html=True)
 
 # Gauges
 col3, col4 = st.columns(2)
 with col3:
     fig_bear_bull = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=50,  # Mock value
+        value=50,  # Mock value or replace with real data
         title={'text': "Bear vs Bull Market"},
         gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "darkblue"}},
     ))
@@ -87,7 +98,7 @@ with col3:
 with col4:
     fig_bitcoin_vs_meme = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=20,  # Mock value
+        value=20,  # Mock value or replace with real data
         title={'text': "Bitcoin vs Meme Coins"},
         gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "orange"}},
     ))
@@ -120,14 +131,16 @@ with col5:
     )
     st.plotly_chart(fig_treemap, use_container_width=True)
 with col6:
-    # Line Chart: Traded Volume (Mock)
-    dates = pd.date_range(start='2024-10-01', periods=30)
-    volumes = [3000000 + i * 100000 for i in range(30)]
-    df_line = pd.DataFrame({'Date': dates, 'Volume': volumes})
-    fig_line = px.line(df_line, x='Date', y='Volume', title='Traded Volume Over Time')
+    # Line Chart: Traded Volume Over Time
+    fig_line = px.line(
+        df_line,
+        x='date',
+        y='total_volume',
+        title='Traded Volume Over Time'
+    )
     fig_line.update_layout(
-        height=400, 
-        yaxis_title="Volume", 
+        height=400,
+        yaxis_title="Total Volume",
         xaxis_title="Date",
         margin=dict(l=0, r=0, t=30, b=0)
     )

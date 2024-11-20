@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from typing import List, Union
+from typing import List, Union, Optional
 from utils import get_mongo_client  # Assuming this is correctly imported
 from datetime import datetime, timedelta
 import re
@@ -33,6 +33,13 @@ class PercentageChangeData(BaseModel):
 
 class TopMoversResponse(BaseModel):
     top_movers: List[PercentageChangeData]
+
+class TradedVolumeData(BaseModel):
+    date: str  # ISO formatted date string
+    total_volume: float
+
+class TradedVolumeResponse(BaseModel):
+    volume_over_time: List[TradedVolumeData]
 
 def clean_numeric_string(value):
     if isinstance(value, str):
@@ -74,7 +81,7 @@ async def top_coins():
             market_cap_value = clean_numeric_string(market_cap_value)
             try:
                 coin['market_cap'] = float(market_cap_value)
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 coin['market_cap'] = 0.0
 
             # Process 'last_price'
@@ -82,7 +89,7 @@ async def top_coins():
             last_price_value = clean_numeric_string(last_price_value)
             try:
                 coin['last_price'] = float(last_price_value)
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 coin['last_price'] = 0.0
 
         # Calculate total market cap of all meme coins
@@ -222,6 +229,73 @@ async def get_top_movers(is_gainer: bool):
             ]
         )
 
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    finally:
+        client.close()
+
+@app.get("/traded-volume", response_model=TradedVolumeResponse)
+async def traded_volume(
+    start_date: Optional[str] = Query(None, description="Start date in YYYY-MM-DD format"),
+    end_date: Optional[str] = Query(None, description="End date in YYYY-MM-DD format")
+):
+    """Endpoint to fetch the total traded volume over time."""
+    client = get_mongo_client()
+    try:
+        db = client[DB_NAME]
+        collection = db[PRICES_COLLECTION]
+
+        # Parse dates
+        if end_date:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        else:
+            end_date = datetime.utcnow()
+
+        if start_date:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        else:
+            start_date = end_date - timedelta(days=30)
+
+        # Aggregate the total_volume over dates
+        pipeline = [
+            {
+                "$match": {
+                    "date": {"$gte": start_date, "$lte": end_date}
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "date": {
+                            "$dateToString": {"format": "%Y-%m-%d", "date": "$date"}
+                        }
+                    },
+                    "total_volume": {"$sum": "$total_volume"}
+                }
+            },
+            {
+                "$sort": {"_id.date": 1}
+            }
+        ]
+
+        aggregated_data = list(collection.aggregate(pipeline))
+
+        if not aggregated_data:
+            raise HTTPException(status_code=404, detail="No traded volume data found for the specified period.")
+
+        # Prepare the response data
+        volume_over_time = [
+            {
+                "date": data['_id']['date'],
+                "total_volume": data['total_volume']
+            }
+            for data in aggregated_data
+        ]
+
+        # Return the response
+        response = TradedVolumeResponse(volume_over_time=volume_over_time)
         return response
 
     except Exception as e:
