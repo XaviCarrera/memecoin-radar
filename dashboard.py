@@ -7,13 +7,20 @@ import plotly.graph_objects as go
 # Set the page configuration
 st.set_page_config(page_title="Meme Coin Radar", layout="wide")
 
-# Center the title above all plots
-st.markdown("<h1 style='text-align: center;'>Meme Coin Radar</h1>", unsafe_allow_html=True)
+# Add custom CSS for the font
+st.markdown("""
+<style>
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Base URL for the FastAPI endpoints
 base_url = "http://0.0.0.0:8080"
 
 # Function to fetch data from an endpoint
+@st.cache_data(ttl=3600)
 def fetch_data(endpoint):
     response = requests.get(f"{base_url}/{endpoint}")
     if response.status_code == 200:
@@ -27,199 +34,142 @@ top_coins_data = fetch_data("top-coins")
 top_gainers_data = fetch_data("top-gainers")
 top_losers_data = fetch_data("top-losers")
 
-# Extract total market cap
+# Extract total market cap and top coins data
 total_market_cap = top_coins_data.get('total_market_cap', 0)
-
-# Extract top 10 coins data
 top_10_coins = top_coins_data.get('top_10_coins', [])
 
-# Prepare data for treemap
+# Prepare data for the treemap
 treemap_df = pd.DataFrame(top_10_coins)
 treemap_df['market_cap'] = pd.to_numeric(treemap_df['market_cap'], errors='coerce')
 treemap_df['last_price'] = pd.to_numeric(treemap_df['last_price'], errors='coerce')
 
-# Calculate total market cap of others
+# Calculate "Others" for treemap
 others_market_cap = total_market_cap - treemap_df['market_cap'].sum()
-
-# Add 'Others' row if market cap is positive
 if others_market_cap > 0:
-    others_row = pd.DataFrame({
-        'symbol': ['Others'],
-        'market_cap': [others_market_cap],
-        'last_price': [None]  # No price for 'Others'
-    })
+    others_row = pd.DataFrame({'symbol': ['Others'], 'market_cap': [others_market_cap], 'last_price': [None]})
     treemap_df = pd.concat([treemap_df, others_row], ignore_index=True)
 
-# Create 'price_text' column for formatted price
-def format_price_text(price):
-    if pd.notnull(price):
-        return f"<br>Price: ${price:,.6f}"
-    else:
-        return ""  # Empty string for 'Others'
-
-treemap_df['price_text'] = treemap_df['last_price'].apply(format_price_text)
-
-# Create the treemap
-fig = px.treemap(
-    treemap_df,
-    path=['symbol'],
-    values='market_cap',
-    title='Top 10 Meme Coins by Market Cap',
-    labels={'symbol': 'Coin'},
-    custom_data=['price_text']
+treemap_df['price_text'] = treemap_df['last_price'].apply(lambda x: f"<br>Price: ${x:,.6f}" if pd.notnull(x) else "")
+treemap_df['display_text'] = treemap_df.apply(
+    lambda row: f"<b>{row['symbol']}</b><br>Market Cap: ${row['market_cap']:,.2f}{row['price_text']}", axis=1
 )
 
-# Update the traces
-fig.update_traces(
-    textinfo='label+value',
-    texttemplate='<b>%{label}</b><br>Market Cap: $%{value:,.2f}%{customdata[0]}',
-    hovertemplate='<b>%{label}</b><br>Market Cap: $%{value:,.2f}%{customdata[0]}<extra></extra>'
-)
+# Sidebar filters
+with st.sidebar:
+    st.header("Filters")
+    selected_coin = st.selectbox("Select Meme Coin", ["Coin A", "Coin B", "Coin C"])
+    selected_period = st.selectbox("Select Period", ["Last 24 Hours", "Last Week", "Last Month"])
 
-# Create the layout with three columns on top
-col1, col2, col3 = st.columns(3)
+# Dashboard Layout
+st.markdown("<h1 style='text-align: center;'>Meme Coin Radar</h1>", unsafe_allow_html=True)
+st.subheader("Market Overview")
 
-# Upper Left: Plotly Indicator for total market cap
+# Key Metrics
+col1, col2 = st.columns([1, 1], gap="medium")
 with col1:
-    fig1 = go.Figure(go.Indicator(
-        mode="number",
-        value=total_market_cap,
-        number={'prefix': "$", 'valueformat': ',.2f'},
-        title={'text': "Total Meme Coin Market Cap"},
-        domain={'x': [0, 1], 'y': [0, 1]}
-    ))
-    fig1.update_layout(height=300)  # Adjust height to match other plots
-    st.plotly_chart(fig1, use_container_width=True)
-
-# Upper Center: Mock gauge plot of bear vs bull market
+    st.markdown("<h3 style='text-align: center;'>Total Market Cap</h3>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; font-size: 24px;'>${total_market_cap:,.2f}</p>", unsafe_allow_html=True)
 with col2:
-    fig2 = go.Figure(go.Indicator(
+    st.markdown("<h3 style='text-align: center;'>Total Traded Volume (24 hrs)</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 24px;'>$300,000,000</p>", unsafe_allow_html=True)
+
+# Gauges
+col3, col4 = st.columns(2)
+with col3:
+    fig_bear_bull = go.Figure(go.Indicator(
         mode="gauge+number",
         value=50,  # Mock value
         title={'text': "Bear vs Bull Market"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, 50], 'color': "red"},
-                {'range': [50, 100], 'color': "green"}
-            ]
-        },
-        domain={'x': [0, 1], 'y': [0, 1]}
+        gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "darkblue"}},
     ))
-    fig2.update_layout(height=300)
-    st.plotly_chart(fig2, use_container_width=True)
-
-# Upper Right: Mock gauge plot of Bitcoin vs Meme Coins
-with col3:
-    fig3 = go.Figure(go.Indicator(
+    fig_bear_bull.update_layout(height=400)
+    st.plotly_chart(fig_bear_bull, use_container_width=True)
+with col4:
+    fig_bitcoin_vs_meme = go.Figure(go.Indicator(
         mode="gauge+number",
         value=20,  # Mock value
         title={'text': "Bitcoin vs Meme Coins"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, 50], 'color': "orange"},
-                {'range': [50, 100], 'color': "purple"}
-            ]
-        },
-        domain={'x': [0, 1], 'y': [0, 1]}
+        gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "orange"}},
     ))
-    fig3.update_layout(height=300)
-    st.plotly_chart(fig3, use_container_width=True)
+    fig_bitcoin_vs_meme.update_layout(height=400)
+    st.plotly_chart(fig_bitcoin_vs_meme, use_container_width=True)
 
-# Create the layout with three columns in the center
-col_left, col_center, col_right = st.columns(3)
+# Market Analysis
+st.subheader("Market Analysis")
+col5, col6 = st.columns(2)
+with col5:
+    # Treemap
+    fig_treemap = px.treemap(
+        treemap_df,
+        path=['symbol'],
+        values='market_cap',
+        custom_data=['display_text'],
+        color='market_cap',
+        color_continuous_scale=px.colors.sequential.Blues
+    )
+    fig_treemap.update_traces(
+        textinfo='label+value',
+        texttemplate='%{customdata[0]}',
+        hovertemplate='%{customdata[0]}<extra></extra>'
+    )
+    fig_treemap.update_layout(
+        title="Top 10 Meme Coins by Market Cap",
+        height=400,
+        coloraxis_showscale=False,
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    st.plotly_chart(fig_treemap, use_container_width=True)
+with col6:
+    # Line Chart: Traded Volume (Mock)
+    dates = pd.date_range(start='2024-10-01', periods=30)
+    volumes = [3000000 + i * 100000 for i in range(30)]
+    df_line = pd.DataFrame({'Date': dates, 'Volume': volumes})
+    fig_line = px.line(df_line, x='Date', y='Volume', title='Traded Volume Over Time')
+    fig_line.update_layout(
+        height=400, 
+        yaxis_title="Volume", 
+        xaxis_title="Date",
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    st.plotly_chart(fig_line, use_container_width=True)
 
-# Center Left: Time series plot of top gainers
-with col_left:
-    if 'top_movers' in top_gainers_data and top_gainers_data['top_movers']:
-        top_gainers = top_gainers_data.get('top_movers', [])
-        gainers_dfs = []
-        for coin in top_gainers:
-            df = pd.DataFrame(coin['price_history'])
-            df['symbol'] = coin['symbol']
-            df['percentage_change'] = coin['percentage_change']
-            gainers_dfs.append(df)
-        if gainers_dfs:
-            gainers_df = pd.concat(gainers_dfs, ignore_index=True)
-            gainers_df['date'] = pd.to_datetime(gainers_df['date'])
-            gainers_df.sort_values(['symbol', 'date'], inplace=True)
-            # Calculate percentage change over time
-            gainers_df['first_price'] = gainers_df.groupby('symbol')['price'].transform('first')
-            gainers_df['percentage_change'] = ((gainers_df['price'] - gainers_df['first_price']) / gainers_df['first_price']) * 100
-            fig4 = px.line(
-                gainers_df,
-                x='date',
-                y='percentage_change',
-                color='symbol',
-                title='Top Gainers Over Last 7 Days',
-                hover_data={'price': ':.6f'}
-            )
-            fig4.update_layout(yaxis_title='Percentage Change (%)')
-            st.plotly_chart(fig4, use_container_width=True)
-        else:
-            st.write("No data available for top gainers.")
-    else:
-        st.write("No data available for top gainers.")
+# Market Movers
+st.subheader("Market Movers")
+view_option = st.radio("Select View:", ["Top Gainers", "Top Losers"], horizontal=True)
+if view_option == "Top Gainers":
+    top_movers = top_gainers_data.get('top_movers', [])
+else:
+    top_movers = top_losers_data.get('top_movers', [])
+movers_df = pd.DataFrame(top_movers)
 
-# Center Center: Treemap plot of top 10 meme coins
-with col_center:
-    if not treemap_df.empty:
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.write("No data available for top 10 coins.")
+# Adjust y-axis dynamically based on data range
+y_axis_range = [
+    movers_df['percentage_change'].min() * 1.1,
+    movers_df['percentage_change'].max() * 1.1
+]
 
-# Center Right: Time series plot of top losers
-with col_right:
-    if 'top_movers' in top_losers_data and top_losers_data['top_movers']:
-        top_losers = top_losers_data.get('top_movers', [])
-        losers_dfs = []
-        for coin in top_losers:
-            df = pd.DataFrame(coin['price_history'])
-            df['symbol'] = coin['symbol']
-            df['percentage_change'] = coin['percentage_change']
-            losers_dfs.append(df)
-        if losers_dfs:
-            losers_df = pd.concat(losers_dfs, ignore_index=True)
-            losers_df['date'] = pd.to_datetime(losers_df['date'])
-            losers_df.sort_values(['symbol', 'date'], inplace=True)
-            # Calculate percentage change over time
-            losers_df['first_price'] = losers_df.groupby('symbol')['price'].transform('first')
-            losers_df['percentage_change'] = ((losers_df['price'] - losers_df['first_price']) / losers_df['first_price']) * 100
-            fig5 = px.line(
-                losers_df,
-                x='date',
-                y='percentage_change',
-                color='symbol',
-                title='Top Losers Over Last 7 Days',
-                hover_data={'price': ':.6f'}
-            )
-            fig5.update_layout(yaxis_title='Percentage Change (%)')
-            st.plotly_chart(fig5, use_container_width=True)
-        else:
-            st.write("No data available for top losers.")
-    else:
-        st.write("No data available for top losers.")
-
-# Add the note in the bottom right corner
-st.markdown(
-    """
-    <style>
-    .fixed-footer {
-        position: fixed;
-        right: 0;
-        bottom: 0;
-        padding: 10px;
-        background-color: rgba(255, 255, 255, 0.5);
-        text-align: right;
-        font-size: 12px;
-    }
-    </style>
-    <div class="fixed-footer">
-        Curated by <a href="https://www.linkedin.com/in/xavigrowth/" target="_blank">Xavier Carrera</a>
-    </div>
-    """,
-    unsafe_allow_html=True
+fig_barchart = px.bar(
+    movers_df,
+    x='symbol',
+    y='percentage_change',
+    text='percentage_change',
+    labels={'symbol': 'Meme Coin', 'percentage_change': 'Percentage Change (%)'},
+    color='percentage_change',
+    color_continuous_scale=px.colors.sequential.Blues,
+    color_continuous_midpoint=0
 )
+fig_barchart.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+fig_barchart.update_layout(
+    title=view_option,
+    height=400,
+    yaxis_title="Percentage Change (%)",
+    xaxis_title="Meme Coin",
+    coloraxis_showscale=False,
+    margin=dict(l=0, r=0, t=30, b=0),
+    yaxis=dict(range=y_axis_range)  # Dynamically adjust y-axis
+)
+st.plotly_chart(fig_barchart, use_container_width=True)
+
+# Trending Meme Coins
+st.subheader("Trending Meme Coins")
+st.info("This section is under development.")
