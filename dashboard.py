@@ -142,12 +142,7 @@ else:
     top_movers = top_losers_data.get('top_movers', [])
 movers_df = pd.DataFrame(top_movers)
 
-# Adjust y-axis dynamically based on data range
-y_axis_range = [
-    movers_df['percentage_change'].min() * 1.1,
-    movers_df['percentage_change'].max() * 1.1
-]
-
+# Create the bar chart without y-axis adjustments
 fig_barchart = px.bar(
     movers_df,
     x='symbol',
@@ -165,8 +160,7 @@ fig_barchart.update_layout(
     yaxis_title="Percentage Change (%)",
     xaxis_title="Meme Coin",
     coloraxis_showscale=False,
-    margin=dict(l=0, r=0, t=30, b=0),
-    yaxis=dict(range=y_axis_range)  # Dynamically adjust y-axis
+    margin=dict(l=0, r=0, t=30, b=0)
 )
 st.plotly_chart(fig_barchart, use_container_width=True)
 
