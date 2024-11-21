@@ -302,3 +302,83 @@ async def traded_volume(
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     finally:
         client.close()
+
+@app.get("/market-sentiment")
+async def market_sentiment():
+    """Endpoint to calculate the Bear vs Bull Market indicator."""
+    client = get_mongo_client()
+    try:
+        db = client[DB_NAME]
+        collection = db[PRICES_COLLECTION]
+
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=7)  # Last week
+
+        # Fetch the latest price for each coin
+        latest_prices_pipeline = [
+            {
+                "$match": {"date": {"$lte": end_date}}
+            },
+            {
+                "$sort": {"date": -1}
+            },
+            {
+                "$group": {
+                    "_id": "$coin_id",
+                    "symbol": {"$first": "$coin_id"},
+                    "last_price": {"$first": "$price"}
+                }
+            }
+        ]
+        latest_prices = list(collection.aggregate(latest_prices_pipeline))
+
+        # Fetch the price 24 hours ago for each coin
+        previous_prices_pipeline = [
+            {
+                "$match": {"date": {"$lte": start_date}}
+            },
+            {
+                "$sort": {"date": -1}
+            },
+            {
+                "$group": {
+                    "_id": "$coin_id",
+                    "symbol": {"$first": "$coin_id"},
+                    "previous_price": {"$first": "$price"}
+                }
+            }
+        ]
+        previous_prices = list(collection.aggregate(previous_prices_pipeline))
+
+        # Convert lists to dictionaries for easy lookup
+        latest_prices_dict = {item['symbol']: item['last_price'] for item in latest_prices}
+        previous_prices_dict = {item['symbol']: item['previous_price'] for item in previous_prices}
+
+        advancing = 0
+        declining = 0
+        total_coins = len(latest_prices_dict)
+
+        for symbol, last_price in latest_prices_dict.items():
+            previous_price = previous_prices_dict.get(symbol)
+            if previous_price is not None:
+                # Clean and convert prices
+                last_price = float(clean_numeric_string(last_price))
+                previous_price = float(clean_numeric_string(previous_price))
+
+                if last_price > previous_price:
+                    advancing += 1
+                elif last_price < previous_price:
+                    declining += 1
+                # If prices are equal, you might choose to handle it separately
+
+        if total_coins == 0:
+            indicator_value = 50  # Neutral value if no data
+        else:
+            indicator_value = (advancing / total_coins) * 100
+
+        return {"bear_vs_bull_indicator": round(indicator_value, 2)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    finally:
+        client.close()
