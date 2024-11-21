@@ -142,13 +142,23 @@ st.subheader("Market Overview")
 
 # Key Metrics
 col1, col2 = st.columns([1, 1], gap="medium")
+
 with col1:
-    st.markdown("<h3 style='text-align: center;'>Total Market Cap</h3>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; font-size: 32px;'>${total_market_cap:,.2f}</p>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); text-align: center;">
+        <h4 style="margin: 0; color: #343a40;">Total Market Cap</h4>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #007bff;">${:,.2f}</p>
+    </div>
+    """.format(total_market_cap), unsafe_allow_html=True)
+
 with col2:
     total_traded_volume = df_line['total_volume'].iloc[-1]  # Latest total volume
-    st.markdown("<h3 style='text-align: center;'>Total Traded Volume (24 hrs)</h3>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; font-size: 32px;'>${total_traded_volume:,.2f}</p>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); text-align: center;">
+        <h4 style="margin: 0; color: #343a40;">Total Traded Volume (24 hrs)</h4>
+        <p style="margin: 0; font-size: 24px; font-weight: bold; color: #007bff;">${:,.2f}</p>
+    </div>
+    """.format(total_traded_volume), unsafe_allow_html=True)
 
 # Gauges
 col3, col4 = st.columns(2)
