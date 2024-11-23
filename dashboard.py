@@ -13,6 +13,26 @@ st.markdown("""
 <style>
 body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f0f8ff; /* Light blue background */
+    color: #333; /* Darker text for better readability */
+}
+h1, h2, h3, h4, h5, h6 {
+    color: #1f77b4; /* Blue for headings */
+}
+div.stButton > button {
+    background-color: #e3f2fd; /* Light blue buttons */
+    color: #0d47a1; /* Dark blue text on buttons */
+    border: 1px solid #90caf9; /* Border around buttons */
+}
+div.stButton > button:hover {
+    background-color: #bbdefb; /* Slightly darker on hover */
+}
+.sidebar .sidebar-content {
+    background-color: #e3f2fd; /* Light blue sidebar */
+}
+footer {
+    background-color: #f0f8ff; /* Light blue footer */
+    color: #333; /* Darker text for footer */
 }
 </style>
 """, unsafe_allow_html=True)
@@ -162,8 +182,15 @@ with col2:
 
 # Gauges
 col3, col4 = st.columns(2)
+
 with col3:
-    st.markdown("<h3 style='text-align: center;'>Bear vs Bull Market</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <h3 style='text-align: center;'>Bear vs Bull Market 
+        <span title="The Bear vs Bull Indicator shows market sentiment. Higher values are bullish (positive), and lower values are bearish (negative).">
+        ℹ️
+        </span>
+    </h3>
+    """, unsafe_allow_html=True)
     fig_bear_bull = go.Figure(go.Indicator(
         mode="gauge+number",
         value=bear_vs_bull_value,
@@ -190,7 +217,13 @@ with col3:
     st.plotly_chart(fig_bear_bull, use_container_width=True)
 
 with col4:
-    st.markdown("<h3 style='text-align: center;'>Bitcoin vs Meme Coins</h3>", unsafe_allow_html=True)
+    st.markdown("""
+    <h3 style='text-align: center;'>Bitcoin vs Meme Coins 
+        <span title="This index compares the trading volume of meme coins to Bitcoin. Higher values mean meme coins are gaining market traction.">
+        ℹ️
+        </span>
+    </h3>
+    """, unsafe_allow_html=True)
     fig_bitcoin_vs_meme = go.Figure(go.Indicator(
         mode="gauge+number",
         value=bitcoin_vs_meme_volume_value,
@@ -231,8 +264,8 @@ with col5:
     )
     fig_treemap.update_traces(
         textinfo='label+value',
-        texttemplate='%{customdata[0]}',
-        hovertemplate='%{customdata[0]}<extra></extra>'
+        texttemplate='',
+        hovertemplate=''
     )
     fig_treemap.update_layout(
         title="Top 10 Meme Coins by Market Cap",
@@ -274,8 +307,12 @@ fig_barchart = px.bar(
     text='percentage_change',
     labels={'symbol': 'Meme Coin', 'percentage_change': 'Percentage Change (%)'},
     color='percentage_change',
-    color_continuous_scale=px.colors.sequential.Blues,
-    color_continuous_midpoint=0
+    color_continuous_scale=[
+        (0.0, "rgb(173, 216, 230)"),  # Light Blue for lower values
+        (0.5, "rgb(36, 123, 160)"),  # Medium Blue
+        (1.0, "rgb(0, 49, 83)")      # Dark Blue for higher values
+    ],
+    color_continuous_midpoint=0  # Optional: Adjust midpoint dynamically if needed
 )
 fig_barchart.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
 fig_barchart.update_layout(
@@ -287,6 +324,7 @@ fig_barchart.update_layout(
     margin=dict(l=0, r=0, t=30, b=0)
 )
 st.plotly_chart(fig_barchart, use_container_width=True)
+
 
 # # Trending Meme Coins
 # st.subheader("Trending Meme Coins")
