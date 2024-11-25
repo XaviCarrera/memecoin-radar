@@ -305,7 +305,7 @@ async def traded_volume(
 
 @app.get("/market-sentiment")
 async def market_sentiment():
-    """Endpoint to calculate the Bear vs Bull Market indicator."""
+    """Endpoint to calculate the weighted Bear vs Bull Market indicator."""
     client = get_mongo_client()
     try:
         db = client[DB_NAME]
@@ -314,7 +314,7 @@ async def market_sentiment():
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=7)  # Last week
 
-        # Fetch the latest price for each coin
+        # Fetch the latest price and market cap for each coin
         latest_prices_pipeline = [
             {
                 "$match": {"date": {"$lte": end_date}}
@@ -326,13 +326,14 @@ async def market_sentiment():
                 "$group": {
                     "_id": "$coin_id",
                     "symbol": {"$first": "$coin_id"},
-                    "last_price": {"$first": "$price"}
+                    "last_price": {"$first": "$price"},
+                    "market_cap": {"$first": "$market_cap"}
                 }
             }
         ]
         latest_prices = list(collection.aggregate(latest_prices_pipeline))
 
-        # Fetch the price 24 hours ago for each coin
+        # Fetch the price and market cap 24 hours ago for each coin
         previous_prices_pipeline = [
             {
                 "$match": {"date": {"$lte": start_date}}
@@ -344,37 +345,43 @@ async def market_sentiment():
                 "$group": {
                     "_id": "$coin_id",
                     "symbol": {"$first": "$coin_id"},
-                    "previous_price": {"$first": "$price"}
+                    "previous_price": {"$first": "$price"},
+                    "market_cap": {"$first": "$market_cap"}
                 }
             }
         ]
         previous_prices = list(collection.aggregate(previous_prices_pipeline))
 
         # Convert lists to dictionaries for easy lookup
-        latest_prices_dict = {item['symbol']: item['last_price'] for item in latest_prices}
-        previous_prices_dict = {item['symbol']: item['previous_price'] for item in previous_prices}
+        latest_prices_dict = {item['symbol']: item for item in latest_prices}
+        previous_prices_dict = {item['symbol']: item for item in previous_prices}
 
-        advancing = 0
-        declining = 0
-        total_coins = len(latest_prices_dict)
+        advancing_weighted = 0
+        declining_weighted = 0
+        total_market_cap = 0
 
-        for symbol, last_price in latest_prices_dict.items():
-            previous_price = previous_prices_dict.get(symbol)
-            if previous_price is not None:
-                # Clean and convert prices
-                last_price = float(clean_numeric_string(last_price))
-                previous_price = float(clean_numeric_string(previous_price))
+        for symbol, latest_data in latest_prices_dict.items():
+            previous_data = previous_prices_dict.get(symbol)
+            if previous_data:
+                try:
+                    last_price = float(clean_numeric_string(latest_data["last_price"]))
+                    previous_price = float(clean_numeric_string(previous_data["previous_price"]))
+                    market_cap = float(clean_numeric_string(latest_data["market_cap"]))
 
-                if last_price > previous_price:
-                    advancing += 1
-                elif last_price < previous_price:
-                    declining += 1
-                # If prices are equal, you might choose to handle it separately
+                    if last_price > previous_price:
+                        advancing_weighted += market_cap
+                    elif last_price < previous_price:
+                        declining_weighted += market_cap
 
-        if total_coins == 0:
+                    total_market_cap += market_cap
+                except (TypeError, ValueError):
+                    # Skip coins with invalid data
+                    continue
+
+        if total_market_cap == 0:
             indicator_value = 50  # Neutral value if no data
         else:
-            indicator_value = (advancing / total_coins) * 100
+            indicator_value = (advancing_weighted / total_market_cap) * 100
 
         return {"bear_vs_bull_indicator": round(indicator_value, 2)}
 

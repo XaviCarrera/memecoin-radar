@@ -150,12 +150,6 @@ df_line['date'] = pd.to_datetime(df_line['date'])
 df_line['total_volume'] = pd.to_numeric(df_line['total_volume'], errors='coerce')
 df_line = df_line.sort_values('date')
 
-# # Sidebar filters
-# with st.sidebar:
-#     st.header("Filters")
-#     selected_coin = st.selectbox("Select Meme Coin", ["Coin A", "Coin B", "Coin C"])
-#     selected_period = st.selectbox("Select Period", ["Last 24 Hours", "Last Week", "Last Month"])
-
 # Dashboard Layout
 st.markdown("<h1 style='text-align: center;'>Meme Coin Radar</h1>", unsafe_allow_html=True)
 st.subheader("Market Overview")
