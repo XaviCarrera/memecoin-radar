@@ -204,13 +204,14 @@ with col3:
         title={'text': ""},
         gauge={
             'axis': {'range': [0, 100], 'tickwidth': 1},
-            'bar': {'color': "#1f77b4"},
+            'bar': {'color': "#b0b0b0"},  # Grey progress bar
             'steps': [
-                {'range': [0, 50], 'color': '#cce5ff'},
-                {'range': [50, 100], 'color': '#1f77b4'}
+                {'range': [0, 33.33], 'color': '#cce5ff'},  # Light blue
+                {'range': [33.33, 66.66], 'color': '#3399ff'},  # Mid blue
+                {'range': [66.66, 100], 'color': '#0050b3'}  # Dark blue
             ],
             'threshold': {
-                'line': {'color': "black", 'width': 4},
+                'line': {'color': "black", 'width': 4},  # Black line
                 'thickness': 0.75,
                 'value': bear_vs_bull_value
             }
@@ -237,13 +238,14 @@ with col4:
         title={'text': ""},
         gauge={
             'axis': {'range': [0, 100], 'tickwidth': 1},
-            'bar': {'color': "#1f77b4"},
+            'bar': {'color': "#b0b0b0"},  # Grey progress bar
             'steps': [
-                {'range': [0, 50], 'color': '#cce5ff'},
-                {'range': [50, 100], 'color': '#1f77b4'}
+                {'range': [0, 33.33], 'color': '#cce5ff'},  # Light blue
+                {'range': [33.33, 66.66], 'color': '#3399ff'},  # Mid blue
+                {'range': [66.66, 100], 'color': '#0050b3'}  # Dark blue
             ],
             'threshold': {
-                'line': {'color': "black", 'width': 4},
+                'line': {'color': "black", 'width': 4},  # Black line
                 'thickness': 0.75,
                 'value': bitcoin_vs_meme_volume_value
             }
