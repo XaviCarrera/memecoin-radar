@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Union, Optional
-from tools.utils import get_mongo_client  # Assuming this is correctly imported
+from tools.utils import get_mongo_client
 from datetime import datetime, timedelta
 import re
 
