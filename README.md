@@ -14,7 +14,7 @@
 * Scripting: Python, Bash Script
 * Databases: MongoDB
 * Data Engineering: Pandas
-* Backend: FastAPI
+* Backend: FastAPI, Redis
 * Frontend/Data Visualization Tools: Plotly, Streamlit
 * Cloud: GCP
 * Testing: Pytest
