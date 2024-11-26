@@ -17,6 +17,7 @@
 * Backend: FastAPI, Redis
 * Frontend/Data Visualization Tools: Plotly, Streamlit
 * Cloud: GCP
+* CI/CD: Docker
 * Testing: Pytest
 
 ## Setup
@@ -30,5 +31,3 @@
 ## Author
 
 Include a brief bio about yourself and contact bio.
-
-
