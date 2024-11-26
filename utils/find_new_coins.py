@@ -4,7 +4,7 @@ import logging
 import os
 from time import sleep
 from pymongo.errors import ConnectionFailure
-from utils import get_mongo_client
+from tools.utils import get_mongo_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -4,7 +4,7 @@ import requests
 from datetime import datetime, timedelta
 from pymongo.errors import BulkWriteError
 from tqdm import tqdm
-from utils import get_mongo_client
+from tools.utils import get_mongo_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

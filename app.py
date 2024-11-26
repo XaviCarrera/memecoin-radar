@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Union, Optional
-from utils import get_mongo_client  # Assuming this is correctly imported
+from tools.utils import get_mongo_client  # Assuming this is correctly imported
 from datetime import datetime, timedelta
 import re
 
@@ -389,4 +389,3 @@ async def market_sentiment():
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     finally:
         client.close()
-        
