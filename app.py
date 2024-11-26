@@ -120,12 +120,12 @@ async def top_coins():
 
 @app.get("/top-gainers", response_model=TopMoversResponse)
 async def top_gainers():
-    """Endpoint to fetch the top 5 meme coins with the largest percentage increase over the last 7 days."""
+    """Endpoint to fetch the top 10 meme coins with the largest percentage increase over the last 7 days."""
     return await get_top_movers(is_gainer=True)
 
 @app.get("/top-losers", response_model=TopMoversResponse)
 async def top_losers():
-    """Endpoint to fetch the top 5 meme coins with the largest percentage decrease over the last 7 days."""
+    """Endpoint to fetch the top 10 meme coins with the largest percentage decrease over the last 7 days."""
     return await get_top_movers(is_gainer=False)
 
 async def get_top_movers(is_gainer: bool):
@@ -209,7 +209,7 @@ async def get_top_movers(is_gainer: bool):
         else:
             sorted_movers = sorted(movers, key=lambda x: x['percentage_change'])
 
-        top_5_movers = sorted_movers[:5]
+        top_10_movers = sorted_movers[:10]
 
         # Prepare the response
         response = TopMoversResponse(
@@ -225,7 +225,7 @@ async def get_top_movers(is_gainer: bool):
                         for price in mover['price_history']
                     ]
                 )
-                for mover in top_5_movers
+                for mover in top_10_movers
             ]
         )
 
@@ -305,14 +305,14 @@ async def traded_volume(
 
 @app.get("/market-sentiment")
 async def market_sentiment():
-    """Endpoint to calculate the weighted Bear vs Bull Market indicator."""
+    """Endpoint to calculate the weighted Bear vs Bull Market indicator over the last 7 days."""
     client = get_mongo_client()
     try:
         db = client[DB_NAME]
         collection = db[PRICES_COLLECTION]
 
         end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=7)  # Last week
+        start_date = end_date - timedelta(days=7)  # Changed from 1 day to 7 days
 
         # Fetch the latest price and market cap for each coin
         latest_prices_pipeline = [
@@ -333,7 +333,7 @@ async def market_sentiment():
         ]
         latest_prices = list(collection.aggregate(latest_prices_pipeline))
 
-        # Fetch the price and market cap 24 hours ago for each coin
+        # Fetch the price and market cap 7 days ago for each coin
         previous_prices_pipeline = [
             {
                 "$match": {"date": {"$lte": start_date}}
@@ -389,3 +389,4 @@ async def market_sentiment():
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     finally:
         client.close()
+        

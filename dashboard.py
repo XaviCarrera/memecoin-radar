@@ -137,7 +137,7 @@ treemap_df['display_text'] = treemap_df.apply(
 )
 
 # Process the traded volume data for the last 30 days (for the line chart)
-end_date_30d = datetime.utcnow() - timedelta(days=2)
+end_date_30d = datetime.utcnow()  # Corrected to use current date
 start_date_30d = end_date_30d - timedelta(days=30)
 time_params_30d = {
     "start_date": start_date_30d.strftime('%Y-%m-%d'),
@@ -166,7 +166,19 @@ with col1:
     """.format(total_market_cap), unsafe_allow_html=True)
 
 with col2:
-    total_traded_volume = df_line['total_volume'].iloc[-1]  # Latest total volume
+    # Calculate total traded volume over the last 24 hours
+    end_date_24h = datetime.utcnow()
+    start_date_24h = end_date_24h - timedelta(days=1)
+    time_params_24h = {
+        "start_date": start_date_24h.strftime('%Y-%m-%d'),
+        "end_date": end_date_24h.strftime('%Y-%m-%d')
+    }
+    traded_volume_data_24h = fetch_data("traded-volume", params=time_params_24h)
+    volume_over_time_24h = traded_volume_data_24h.get('volume_over_time', [])
+    df_volume_24h = pd.DataFrame(volume_over_time_24h)
+    df_volume_24h['total_volume'] = pd.to_numeric(df_volume_24h['total_volume'], errors='coerce')
+    total_traded_volume = df_volume_24h['total_volume'].sum()  # Sum over the last 24 hours
+
     st.markdown("""
     <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); text-align: center;">
         <h4 style="margin: 0; color: #343a40;">Total Traded Volume (24 hrs)</h4>
@@ -180,7 +192,7 @@ col3, col4 = st.columns(2)
 with col3:
     st.markdown("""
     <h3 style='text-align: center;'>Bear vs Bull Market 
-        <span title="The Bear vs Bull Indicator shows market sentiment. Higher values are bullish (positive), and lower values are bearish (negative).">
+        <span title="The Bear vs Bull Indicator shows market sentiment over the last 7 days. Higher values are bullish (positive), and lower values are bearish (negative).">
         ℹ️
         </span>
     </h3>
@@ -312,17 +324,12 @@ fig_barchart.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
 fig_barchart.update_layout(
     title=view_option,
     height=400,
-    yaxis_title="Percentage Change (%)",
+    yaxis_title="Price Percentage Change (%)",
     xaxis_title="Meme Coin",
     coloraxis_showscale=False,
     margin=dict(l=0, r=0, t=30, b=0)
 )
 st.plotly_chart(fig_barchart, use_container_width=True)
-
-
-# # Trending Meme Coins
-# st.subheader("Trending Meme Coins")
-# st.info("This section is under development.")
 
 st.markdown(
     """
