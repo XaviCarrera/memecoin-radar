@@ -4,7 +4,10 @@ import logging
 import os
 from time import sleep
 from pymongo.errors import ConnectionFailure
+from path_setup import setup_project_root
 from tools.utils import get_mongo_client
+
+setup_project_root()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,7 +17,7 @@ COINS_LIST_URL = 'https://api.coingecko.com/api/v3/coins/list'
 COIN_DETAILS_URL = 'https://api.coingecko.com/api/v3/coins/{}'
 
 # Cache file path
-CACHE_FILE = 'cache/all_coins_cache.json'
+CACHE_FILE = './cache/all_coins_cache.json'
 DB_NAME = 'memecoin_radar'
 MEMECOINS_COLLECTION = 'memecoins'
 

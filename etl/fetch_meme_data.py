@@ -1,7 +1,10 @@
 import requests
 import logging
 import time
+from path_setup import setup_project_root
 from tools.utils import get_mongo_client
+
+setup_project_root()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

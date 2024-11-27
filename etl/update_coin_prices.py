@@ -4,7 +4,10 @@ import requests
 from datetime import datetime, timedelta
 from pymongo.errors import BulkWriteError
 from tqdm import tqdm
+from path_setup import setup_project_root
 from tools.utils import get_mongo_client
+
+setup_project_root()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
