@@ -4,6 +4,7 @@ import logging
 import os
 from time import sleep
 from pymongo.errors import ConnectionFailure
+from datetime import datetime, timezone
 from path_setup import setup_project_root
 from tools.utils import get_mongo_client
 
@@ -20,6 +21,7 @@ COIN_DETAILS_URL = 'https://api.coingecko.com/api/v3/coins/{}'
 CACHE_FILE = './cache/all_coins_cache.json'
 DB_NAME = 'memecoin_radar'
 MEMECOINS_COLLECTION = 'memecoins'
+PRICES_COLLECTION = 'prices'
 
 def load_cache():
     """Load the cache of processed coin IDs from a file."""
@@ -53,7 +55,7 @@ def fetch_all_coins():
 def fetch_coin_details(coin_id):
     """Fetch detailed information for a specific coin."""
     try:
-        response = requests.get(COIN_DETAILS_URL.format(coin_id))
+        response = requests.get(COIN_DETAILS_URL.format(coin_id), params={'localization': 'false', 'tickers': 'false', 'community_data': 'false', 'developer_data': 'false', 'sparkline': 'false'})
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -64,6 +66,48 @@ def is_meme_coin(coin_details):
     """Determine if a coin is a meme coin based on its categories."""
     categories = coin_details.get('categories', [])
     return 'Meme' in categories
+
+def store_price_data(coin_details, db):
+    """Store the coin's current market data in the 'prices' collection."""
+    coin_id = coin_details.get('id')
+    if not coin_id:
+        logging.error("Coin ID is missing in coin details.")
+        return
+
+    market_data = coin_details.get('market_data')
+    if not market_data:
+        logging.warning(f"No market data available for coin '{coin_id}'. Skipping price storage.")
+        return
+
+    price = market_data.get('current_price', {}).get('usd')
+    market_cap = market_data.get('market_cap', {}).get('usd')
+    total_volume = market_data.get('total_volume', {}).get('usd')
+
+    if price is None or market_cap is None or total_volume is None:
+        logging.warning(f"Incomplete market data for coin '{coin_id}'. Skipping price storage.")
+        return
+
+    # Set the date to current date at 00:00:00 UTC
+    date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    record = {
+        'coin_id': coin_id,
+        'date': date,
+        'price': price,
+        'market_cap': market_cap,
+        'total_volume': total_volume
+    }
+
+    try:
+        prices_col = db[PRICES_COLLECTION]
+        prices_col.update_one(
+            {'coin_id': coin_id, 'date': date},
+            {'$set': record},
+            upsert=True
+        )
+        logging.info(f"Stored price data for coin '{coin_id}' on {date.date()}.")
+    except Exception as e:
+        logging.error(f"Error storing price data in MongoDB: {e}")
 
 def main():
     """Main function to check for new coins, update the cache, and store meme coins in MongoDB."""
@@ -116,6 +160,10 @@ def main():
                 logging.info(f"Stored meme coin: {coin_name} ({coin_symbol}) in the database.")
             except Exception as e:
                 logging.error(f"Error storing coin in MongoDB: {e}")
+                continue  # Skip storing price data if unable to store coin details
+
+            # Store price data in the 'prices' collection
+            store_price_data(coin_details, db)
 
         # Add a 20-second delay after processing each coin
         sleep(20)
